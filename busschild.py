@@ -32,19 +32,26 @@ def format_departure(departure):
     destination = departure['destination']
     strtime = departure['strTime'].replace(' ','')
     line = "{} {} {} ".format(route, strtime, destination)
+    if len(line) >= 20:
+        line = line[:20]
+    else:
+        line = line.ljust(20, ' ')
     return line
 
 def main():
-    display = ba66.posdisplay()
+    display = ba66.posdisplay(parity="O")
     while True:
         departures = get_realtime_info(STOP)['departures']
-        departures = departures[:2]
-        display.reset()
+        departures = departures[:4]
+        display.position_cursor(0,0)
         if departures:
             display_cmds = '\r\n'.join(map(format_departure, departures))
             print(repr(display_cmds), file=sys.stderr)
-            display.write(display_cmds)
+            for c in display_cmds:
+                display.write(c)
+                time.sleep(0.1)
         else:
+            display.reset()
             display.write("Lauf doch heim.")
         time.sleep(REFRESH_TIMEOUT)
 
