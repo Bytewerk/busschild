@@ -1,15 +1,20 @@
 import serial
+import sys
 
 class posdisplay():
     """
     Represent the BA66 display.
     """
     def __init__(self, port="/dev/ttyUSB0", baudrate=9600, **kwargs):
-        self.ser = serial.Serial(port, baudrate, **kwargs)
+        self.ser = None
+        try:
+            self.ser = serial.Serial(port, baudrate, **kwargs)
+        except serial.SerialException:
+            print("Can't open port, using sys.stderr for debugging.", file=sys.stderr)
 
     def clear(self):
         """ Clear display contents. """
-        self.ser.write(b'\x1B[2J')
+        self.write(b'\x1B[2J')
 
     def position_cursor(self, x, y):
         """ Position the cursor. """
@@ -21,7 +26,10 @@ class posdisplay():
         self.position_cursor(0, 0)
 
     def write(self, data):
-        if isinstance(data, str):
-            self.ser.write(bytes(data, 'cp850'))
+        if self.ser:
+            if isinstance(data, str):
+                self.ser.write(bytes(data, 'cp850'))
+            else:
+                self.ser.write(data)
         else:
-            self.ser.write(data)
+            sys.stderr.write(repr(data).replace('\x1b','\\x1B'))
