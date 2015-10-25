@@ -7,11 +7,11 @@ from bs4 import BeautifulSoup
 import json
 import ba66
 import time
+import sys
 
 BASE_URL = "http://www.invg.de"
 SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
-BAUDRATE = 9600
-REFRESH_TIMEOUT = 60
+REFRESH_TIMEOUT = 20
 STOP = "Klinikum"
 
 def get_realtime_info(stop_name):
@@ -27,7 +27,7 @@ def get_realtime_info(stop_name):
     stop_resp = requests.get(first_hit)
     return json.loads(stop_resp.text)
 
-def format_departure(display, departure):
+def format_departure(departure):
     route = departure['route'].replace(' ','')
     destination = departure['destination']
     strtime = departure['strTime'].replace(' ','')
@@ -41,7 +41,9 @@ def main():
         departures = departures[:2]
         display.reset()
         if departures:
-            print('\r\n'.join(map(format_departure, departures)))
+            display_cmds = '\r\n'.join(map(format_departure, departures))
+            print(repr(display_cmds), file=sys.stderr)
+            display.write(display_cmds)
         else:
             display.write("Lauf doch heim.")
         time.sleep(REFRESH_TIMEOUT)
