@@ -5,10 +5,13 @@ Show bus departures times on a POS display.
 import requests
 from bs4 import BeautifulSoup
 import json
+import ba66
+import time
 
 BASE_URL = "http://www.invg.de"
 SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
 BAUDRATE = 9600
+REFRESH_TIMEOUT = 60
 STOP = "Klinikum"
 
 def get_realtime_info(stop_name):
@@ -23,6 +26,25 @@ def get_realtime_info(stop_name):
     first_hit = first_hit.replace("showMultiple", "getRealtimeData")
     stop_resp = requests.get(first_hit)
     return json.loads(stop_resp.text)
+
+def format_departure(display, departure):
+    route = departure['route'].replace(' ','')
+    destination = departure['destination']
+    strtime = departure['strTime'].replace(' ','')
+    line = "{} {} {} ".format(route, strtime, destination)
+    return line
+
+def main():
+    display = ba66.posdisplay()
+    while True:
+        departures = get_realtime_info(STOP)['departures']
+        departures = departures[:2]
+        display.reset()
+        if departures:
+            print('\r\n'.join(map(format_departure, departures)))
+        else:
+            display.write("Lauf doch heim.")
+        time.sleep(REFRESH_TIMEOUT)
 
 if __name__ == '__main__':
     main()
