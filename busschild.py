@@ -31,6 +31,8 @@ def format_departure(departure):
     route = departure['route'].replace(' ','')
     destination = departure['destination']
     strtime = departure['strTime'].replace(' ','')
+    if strtime == "0":
+        strtime = "RENN!"
     line = "{} {} {} ".format(route, strtime, destination)
     if len(line) >= 20:
         line = line[:20]
