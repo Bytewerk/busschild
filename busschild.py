@@ -9,11 +9,15 @@ import ba66
 import time
 import sys
 import weather
+import re
+from datetime import datetime
 
 BASE_URL = "http://www.invg.de"
 SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
 REFRESH_TIMEOUT = 20
 STOP = "Klinikum"
+
+__SCROLL_SEP = "***"
 
 def get_realtime_info(stop_name):
     """
@@ -42,34 +46,40 @@ def format_departure(departure):
     return line
 
 def do_departures(display):
-    pass
+    departures = get_realtime_info(STOP)['departures']
+    departures = departures[:4]
+    display.reset()
+    before = datetime.now()
+    for departure in departures:
+        departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
+    while (datetime.now() - before).seconds < 60:
+        if departures:
+            display.position_cursor(0,0)
+            display_cmds = '\r\n'.join(map(format_departure, departures))
+            display.write(display_cmds)
+            for departure in departures:
+                departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
+            time.sleep(0.25)
+        else:
+            display.reset()
+            display.write("Lauf doch heim.")
 
 def do_weather(display):
-    pass
+    forecasts = weather.get_forecast("Ingolstadt","de","de")
+    forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}°C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
+    before = datetime.now()
+    while (datetime.now() - before).seconds < 60:
+        display.position_cursor(0,0)
+        display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
+        for item in forecasts:
+            item[1] = item[1][1:]+item[1][:1]
+        time.sleep(0.25)
 
 def main():
     display = ba66.posdisplay(parity="O")
     while True:
-        # departures = get_realtime_info(STOP)['departures']
-        # departures = departures[:4]
-        # display.position_cursor(0,0)
-        # if departures:
-        #     display_cmds = '\r\n'.join(map(format_departure, departures))
-        #     print(repr(display_cmds), file=sys.stderr)
-        #     for c in display_cmds:
-        #         display.write(c)
-        #         time.sleep(0.1)
-        # else:
-        #     display.reset()
-        #     display.write("Lauf doch heim.")
-        forecasts = weather.get_forecast("Ingolstadt","de","de")
-        strs = weather.fmt_forecasts_sidescrolling(forecasts)
-        for i in range(60):
-            for s in strs:
-                display.position_cursor(0,0)
-                display.write(s)
-                time.sleep(0.5)
-        #time.sleep(REFRESH_TIMEOUT)
+        do_weather(display)
+        do_departures(display)
 
 if __name__ == '__main__':
     main()
