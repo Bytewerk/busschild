@@ -8,6 +8,7 @@ import json
 import ba66
 import time
 import sys
+import weather
 
 BASE_URL = "http://www.invg.de"
 SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
@@ -40,22 +41,35 @@ def format_departure(departure):
         line = line.ljust(20, ' ')
     return line
 
+def do_departures(display):
+    pass
+
+def do_weather(display):
+    pass
+
 def main():
     display = ba66.posdisplay(parity="O")
     while True:
-        departures = get_realtime_info(STOP)['departures']
-        departures = departures[:4]
-        display.position_cursor(0,0)
-        if departures:
-            display_cmds = '\r\n'.join(map(format_departure, departures))
-            print(repr(display_cmds), file=sys.stderr)
-            for c in display_cmds:
-                display.write(c)
-                time.sleep(0.1)
-        else:
-            display.reset()
-            display.write("Lauf doch heim.")
-        time.sleep(REFRESH_TIMEOUT)
+        # departures = get_realtime_info(STOP)['departures']
+        # departures = departures[:4]
+        # display.position_cursor(0,0)
+        # if departures:
+        #     display_cmds = '\r\n'.join(map(format_departure, departures))
+        #     print(repr(display_cmds), file=sys.stderr)
+        #     for c in display_cmds:
+        #         display.write(c)
+        #         time.sleep(0.1)
+        # else:
+        #     display.reset()
+        #     display.write("Lauf doch heim.")
+        forecasts = weather.get_forecast("Ingolstadt","de","de")
+        strs = weather.fmt_forecasts_sidescrolling(forecasts)
+        for i in range(60):
+            for s in strs:
+                display.position_cursor(0,0)
+                display.write(s)
+                time.sleep(0.5)
+        #time.sleep(REFRESH_TIMEOUT)
 
 if __name__ == '__main__':
     main()
