@@ -50,19 +50,20 @@ def do_departures(display):
     departures = departures[:4]
     display.reset()
     before = datetime.now()
-    for departure in departures:
-        departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
-    while (datetime.now() - before).seconds < 60:
-        if departures:
-            display.position_cursor(0,0)
-            display_cmds = '\r\n'.join(map(format_departure, departures))
-            display.write(display_cmds)
-            for departure in departures:
-                departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
-            time.sleep(0.25)
-        else:
-            display.reset()
-            display.write("Lauf doch heim.")
+    if departures:
+        for departure in departures:
+            departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
+        while (datetime.now() - before).seconds < 60:
+                display.position_cursor(0,0)
+                display_cmds = '\r\n'.join(map(format_departure, departures))
+                display.write(display_cmds)
+                for departure in departures:
+                    departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
+                time.sleep(0.25)
+    else:
+        display.reset()
+        display.write("Lauf doch heim.")
+        time.sleep(60)
 
 def do_weather(display):
     forecasts = weather.get_forecast("Ingolstadt","de","de")
