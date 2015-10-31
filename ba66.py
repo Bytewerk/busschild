@@ -28,7 +28,7 @@ class posdisplay():
     def write(self, data):
         if self.ser:
             if isinstance(data, str):
-                self.ser.write(bytes(data, 'cp850'))
+                self.ser.write(bytes(data,'latin-1'))
             else:
                 self.ser.write(data)
         else:
