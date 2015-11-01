@@ -53,10 +53,10 @@ def format_departure(departure):
 def do_departures(display):
     display.reset()
     while True:
-        departures = get_realtime_info(STOP)['departures']
-        departures = departures[:4]
-        before = datetime.now()
-        if departures:
+        try:
+            departures = get_realtime_info(STOP)['departures']
+            departures = departures[:4]
+            before = datetime.now()
             for departure in departures:
                 departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
             while (datetime.now() - before).seconds < BUS_REFRESH_TIMEOUT:
@@ -66,38 +66,47 @@ def do_departures(display):
                     for departure in departures:
                         departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
                     time.sleep(0.25)
-        else:
+        except:
             display.reset()
-            display.write("Lauf doch heim.")
+            display.write("Keine Daten od. Feh-\r\nler. Lauf heim.")
             time.sleep(BUS_REFRESH_TIMEOUT)
 
 def do_weather(display):
     display.reset()
     while True:
-        forecasts = weather.get_forecast("Ingolstadt","de","de")
-        forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}\xF8C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
-        before = datetime.now()
-        while (datetime.now() - before).seconds < WEATHER_REFRESH_TIMEOUT:
-            display.position_cursor(0,0)
-            display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
-            for item in forecasts:
-                item[1] = item[1][1:]+item[1][:1]
-            time.sleep(0.25)
+        try:
+            forecasts = weather.get_forecast("Ingolstadt","de","de")
+            forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}\xF8C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
+            before = datetime.now()
+            while (datetime.now() - before).seconds < WEATHER_REFRESH_TIMEOUT:
+                display.position_cursor(0,0)
+                display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
+                for item in forecasts:
+                    item[1] = item[1][1:]+item[1][:1]
+                time.sleep(0.25)
+        except:
+            display.reset()
+            display.write("Keine Daten od. Feh-\r\nler.")
+            time.sleep(WEATHER_REFRESH_TIMEOUT)
 
 def do_freifunk(display):
     display.reset()
     display.write("{:^20}".format("Freifunk  Ingolstadt"))
     while True:
-        nodes_json = ffin.get_nodes_json()
-        clients = ffin.count_clients(nodes_json)
-        nodes = ffin.count_nodes(nodes_json)
-        before = datetime.now()
-        stats = "Clients: {} {scroll_sep} Nodes: {} {scroll_sep} ".format(clients, nodes, scroll_sep = __SCROLL_SEP).ljust(20)
-        while (datetime.now() - before).seconds < FREIFUNK_REFRESH_TIMEOUT:
-            display.position_cursor(0,2)
-            display.write(stats[:20])
-            stats = stats[1:]+stats[:1]
-            time.sleep(0.25)
+        try:
+            nodes_json = ffin.get_nodes_json()
+            clients = ffin.count_clients(nodes_json)
+            nodes = ffin.count_nodes(nodes_json)
+            before = datetime.now()
+            stats = "Clients: {} {scroll_sep} Nodes: {} {scroll_sep} ".format(clients, nodes, scroll_sep = __SCROLL_SEP).ljust(20)
+            while (datetime.now() - before).seconds < FREIFUNK_REFRESH_TIMEOUT:
+                display.position_cursor(0,2)
+                display.write(stats[:20])
+                stats = stats[1:]+stats[:1]
+                time.sleep(0.25)
+        except:
+            display.reset()
+            display.write("Keine Daten od. Feh-\r\nler.")
 
 def main():
     freifunk_display = ba66.posdisplay(port="/dev/ttyUSB1")
