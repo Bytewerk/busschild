@@ -90,9 +90,9 @@ def do_weather(display):
             time.sleep(WEATHER_REFRESH_TIMEOUT)
 
 def do_freifunk(display):
-    display.reset()
-    display.write("{:^20}".format("Freifunk  Ingolstadt"))
     while True:
+        display.position_cursor(0, 0)
+        display.write("{:^20}".format("Freifunk  Ingolstadt"))
         try:
             nodes_json = ffin.get_nodes_json()
             clients = ffin.count_clients(nodes_json)
