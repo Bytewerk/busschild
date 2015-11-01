@@ -26,23 +26,3 @@ def count_nodes(nodes_json):
     Extract the total count of nodes from *nodes_json*.
     """
     return len(nodes_json['nodes'])
-
-def main():
-    from ba66 import posdisplay
-    d = posdisplay()
-    d.reset()
-    d.write("{:^20}".format("Freifunk  Ingolstadt"))
-    while True:
-        nodes_json = get_nodes_json()
-        clients = count_clients(nodes_json)
-        nodes = count_nodes(nodes_json)
-        before = datetime.now()
-        stats = "Clients: {} \xDB Nodes: {} \xDB ".format(clients, nodes).ljust(20)
-        while (datetime.now() - before).seconds < 60:
-            d.position_cursor(0,2)
-            d.write(stats[:20])
-            stats = stats[1:]+stats[:1]
-            time.sleep(0.25)
-
-if __name__ == '__main__':
-    main()

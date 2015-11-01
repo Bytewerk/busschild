@@ -9,12 +9,17 @@ import ba66
 import time
 import sys
 import weather
+import ffin
+import invg
+import threading
 import re
 from datetime import datetime
 
 BASE_URL = "http://www.invg.de"
 SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
-REFRESH_TIMEOUT = 20
+BUS_REFRESH_TIMEOUT = 20
+WEATHER_REFRESH_TIMEOUT = 120
+FREIFUNK_REFRESH_TIMEOUT = 60
 STOP = "Klinikum"
 
 __SCROLL_SEP = "***"
@@ -46,41 +51,69 @@ def format_departure(departure):
     return line
 
 def do_departures(display):
-    departures = get_realtime_info(STOP)['departures']
-    departures = departures[:4]
     display.reset()
-    before = datetime.now()
-    if departures:
-        for departure in departures:
-            departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
-        while (datetime.now() - before).seconds < 60:
-                display.position_cursor(0,0)
-                display_cmds = '\r\n'.join(map(format_departure, departures))
-                display.write(display_cmds)
-                for departure in departures:
-                    departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
-                time.sleep(0.25)
-    else:
+    while True:
+        departures = get_realtime_info(STOP)['departures']
+        departures = departures[:4]
         display.reset()
-        display.write("Lauf doch heim.")
-        time.sleep(60)
+        before = datetime.now()
+        if departures:
+            for departure in departures:
+                departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
+            while (datetime.now() - before).seconds < BUS_REFRESH_TIMEOUT:
+                    display.position_cursor(0,0)
+                    display_cmds = '\r\n'.join(map(format_departure, departures))
+                    display.write(display_cmds)
+                    for departure in departures:
+                        departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
+                    time.sleep(0.25)
+        else:
+            display.reset()
+            display.write("Lauf doch heim.")
+            time.sleep(BUS_REFRESH_TIMEOUT)
 
 def do_weather(display):
-    forecasts = weather.get_forecast("Ingolstadt","de","de")
-    forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}°C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
-    before = datetime.now()
-    while (datetime.now() - before).seconds < 60:
-        display.position_cursor(0,0)
-        display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
-        for item in forecasts:
-            item[1] = item[1][1:]+item[1][:1]
-        time.sleep(0.25)
+    display.reset()
+    while True:
+        forecasts = weather.get_forecast("Ingolstadt","de","de")
+        forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}\xF8C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
+        before = datetime.now()
+        while (datetime.now() - before).seconds < WEATHER_REFRESH_TIMEOUT:
+            display.position_cursor(0,0)
+            display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
+            for item in forecasts:
+                item[1] = item[1][1:]+item[1][:1]
+            time.sleep(0.25)
+
+def do_freifunk(display):
+    display.reset()
+    display.write("{:^20}".format("Freifunk  Ingolstadt"))
+    while True:
+        nodes_json = ffin.get_nodes_json()
+        clients = ffin.count_clients(nodes_json)
+        nodes = ffin.count_nodes(nodes_json)
+        before = datetime.now()
+        stats = "Clients: {} \xDB Nodes: {} \xDB ".format(clients, nodes).ljust(20)
+        while (datetime.now() - before).seconds < FREIFUNK_REFRESH_TIMEOUT:
+            display.position_cursor(0,2)
+            display.write(stats[:20])
+            stats = stats[1:]+stats[:1]
+            time.sleep(0.25)
 
 def main():
-    display = ba66.posdisplay(parity="O")
-    while True:
-        do_weather(display)
-        do_departures(display)
+    freifunk_display = ba66.posdisplay(port="/dev/ttyUSB1")
+    weather_display = ba66.posdisplay(port="/dev/ttyUSB0", parity='O')
+    bus_display = ba66.posdisplay(port="/dev/ttyUSB2", parity='O')
+
+    bus_thread = threading.Thread(None, do_departures, args=[bus_display])
+    bus_thread.start()
+
+    freifunk_thread = threading.Thread(None, do_freifunk, args=[freifunk_display])
+    freifunk_thread.start()
+
+    weather_thread = threading.Thread(None, do_weather, args=[weather_display])
+    weather_thread.start()
+
 
 if __name__ == '__main__':
     main()
