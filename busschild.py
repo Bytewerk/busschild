@@ -22,7 +22,7 @@ WEATHER_REFRESH_TIMEOUT = 120
 FREIFUNK_REFRESH_TIMEOUT = 60
 STOP = "Klinikum"
 
-__SCROLL_SEP = "***"
+__SCROLL_SEP = "\xDB"
 
 def get_realtime_info(stop_name):
     """
@@ -55,7 +55,6 @@ def do_departures(display):
     while True:
         departures = get_realtime_info(STOP)['departures']
         departures = departures[:4]
-        display.reset()
         before = datetime.now()
         if departures:
             for departure in departures:
@@ -93,7 +92,7 @@ def do_freifunk(display):
         clients = ffin.count_clients(nodes_json)
         nodes = ffin.count_nodes(nodes_json)
         before = datetime.now()
-        stats = "Clients: {} \xDB Nodes: {} \xDB ".format(clients, nodes).ljust(20)
+        stats = "Clients: {} {scroll_sep} Nodes: {} {scroll_sep} ".format(clients, nodes, scroll_sep = __SCROLL_SEP).ljust(20)
         while (datetime.now() - before).seconds < FREIFUNK_REFRESH_TIMEOUT:
             display.position_cursor(0,2)
             display.write(stats[:20])
