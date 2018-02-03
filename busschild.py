@@ -9,14 +9,12 @@ import ba66
 import time
 import sys
 import weather
-import ffin
-import invg
 import threading
 import re
 from datetime import datetime
 
-BASE_URL = "http://www.invg.de"
-SEARCH_URL = "http://www.invg.de/showRealtimeCombined.action"
+BASE_URL = "https://www.invg.de"
+SEARCH_URL = "https://www.invg.de/rt/showRealtimeCombined.action"
 BUS_REFRESH_TIMEOUT = 20
 WEATHER_REFRESH_TIMEOUT = 120
 FREIFUNK_REFRESH_TIMEOUT = 60
@@ -29,7 +27,7 @@ def get_realtime_info(stop_name):
     Return the real time info for the first search hit for *stop_name* as a dict.
     """
     resp = requests.post(SEARCH_URL, {"nameKey": stop_name})
-    soup = BeautifulSoup(resp.text)
+    soup = BeautifulSoup(resp.text, "lxml")
     table = soup.select("table.table-bs")[0]
     tbody = table.tbody
     first_hit = BASE_URL + tbody.tr.td.a["href"]
@@ -71,57 +69,9 @@ def do_departures(display):
             display.write("Keine Daten od. Feh-\r\nler. Lauf heim.")
             time.sleep(BUS_REFRESH_TIMEOUT)
 
-def do_weather(display):
-    display.reset()
-    while True:
-        try:
-            forecasts = weather.get_forecast("Ingolstadt","de","de")
-            forecasts = [[datetime.fromtimestamp(item['dt']), __SCROLL_SEP+" {}\xF8C {} ".format(item['main']['temp'], item['weather'][0]['description'])] for item in forecasts]
-            before = datetime.now()
-            while (datetime.now() - before).seconds < WEATHER_REFRESH_TIMEOUT:
-                display.position_cursor(0,0)
-                display.write("\r\n".join(["{:%H:%M} {}".format(*item)[:20] for item in forecasts]))
-                for item in forecasts:
-                    item[1] = item[1][1:]+item[1][:1]
-                time.sleep(0.25)
-        except:
-            display.reset()
-            display.write("Keine Daten od. Feh-\r\nler.")
-            time.sleep(WEATHER_REFRESH_TIMEOUT)
-
-def do_freifunk(display):
-    while True:
-        display.position_cursor(0, 0)
-        display.write("{:^20}".format("Freifunk  Ingolstadt"))
-        try:
-            nodes_json = ffin.get_nodes_json()
-            clients = ffin.count_clients(nodes_json)
-            nodes = ffin.count_nodes(nodes_json)
-            before = datetime.now()
-            stats = "Clients: {} {scroll_sep} Nodes: {} {scroll_sep} ".format(clients, nodes, scroll_sep = __SCROLL_SEP).ljust(20)
-            while (datetime.now() - before).seconds < FREIFUNK_REFRESH_TIMEOUT:
-                display.position_cursor(0,2)
-                display.write(stats[:20])
-                stats = stats[1:]+stats[:1]
-                time.sleep(0.25)
-        except:
-            display.reset()
-            display.write("Keine Daten od. Feh-\r\nler.")
-
 def main():
-    freifunk_display = ba66.posdisplay(port="/dev/ttyUSB1")
-    weather_display = ba66.posdisplay(port="/dev/ttyUSB0", parity='O')
     bus_display = ba66.posdisplay(port="/dev/ttyUSB2", parity='O')
-
-    bus_thread = threading.Thread(None, do_departures, args=[bus_display])
-    bus_thread.start()
-
-    freifunk_thread = threading.Thread(None, do_freifunk, args=[freifunk_display])
-    freifunk_thread.start()
-
-    weather_thread = threading.Thread(None, do_weather, args=[weather_display])
-    weather_thread.start()
-
+    do_departures(bus_display)
 
 if __name__ == '__main__':
     main()
