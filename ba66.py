@@ -1,16 +1,14 @@
-import serial
 import sys
 
 class posdisplay():
     """
-    Represent the BA66 display.
+    Represent an ESP8266-equipped BA66 display connected by TCP/IP.
     """
-    def __init__(self, port="/dev/ttyUSB0", baudrate=9600, **kwargs):
-        self.ser = None
-        try:
-            self.ser = serial.Serial(port, baudrate, **kwargs)
-        except serial.SerialException:
-            print("Can't open port, using sys.stderr for debugging.", file=sys.stderr)
+    def __init__(self, sock):
+        """ Create a new display.
+            sock: The socket via which the display is connecting.
+        """
+        self.sock = sock
 
     def clear(self):
         """ Clear display contents. """
@@ -26,10 +24,10 @@ class posdisplay():
         self.position_cursor(0, 0)
 
     def write(self, data):
-        if self.ser:
+        if self.sock:
             if isinstance(data, str):
-                self.ser.write(bytes(data,'latin-1'))
+                self.sock.send(bytes(data,'latin-1'))
             else:
-                self.ser.write(data)
+                self.sock.send(data)
         else:
             sys.stderr.write(repr(data).replace('\x1b','\\x1B'))

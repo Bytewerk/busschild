@@ -2,22 +2,20 @@
 Show bus departures times on a POS display.
 """
 
-import requests
 from bs4 import BeautifulSoup
-import json
-import ba66
-import time
-import sys
-import weather
-import threading
-import re
 from datetime import datetime
+import ba66
+import json
+import re
+import requests
+import socket
+import sys
+import time
+import traceback
 
 BASE_URL = "https://www.invg.de"
 SEARCH_URL = "https://www.invg.de/rt/showRealtimeCombined.action"
 BUS_REFRESH_TIMEOUT = 20
-WEATHER_REFRESH_TIMEOUT = 120
-FREIFUNK_REFRESH_TIMEOUT = 60
 STOP = "Klinikum"
 
 __SCROLL_SEP = "\xDB"
@@ -70,8 +68,16 @@ def do_departures(display):
             time.sleep(BUS_REFRESH_TIMEOUT)
 
 def main():
-    bus_display = ba66.posdisplay(port="/dev/ttyUSB2", parity='O')
-    do_departures(bus_display)
+    while True:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(30)
+            sock.connect((sys.argv[1], int(sys.argv[2])))
+            display = ba66.posdisplay(sock)
+            do_departures(display)
+        except:
+            print(traceback.format_exc(), file=sys.stderr)
+            time.sleep(10)
 
 if __name__ == '__main__':
     main()
