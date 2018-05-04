@@ -49,23 +49,23 @@ def format_departure(departure):
 def do_departures(display):
     display.reset()
     while True:
-        display_cmds = None
         try:
             departures = get_realtime_info(STOP)['departures']
             departures = departures[:4]
             before = datetime.now()
             for departure in departures:
                 departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
-            display.position_cursor(0,0)
-            display_cmds = '\r\n'.join(map(format_departure, departures))
+            while (datetime.now() - before).seconds < BUS_REFRESH_TIMEOUT:
+                    display.position_cursor(0,0)
+                    display_cmds = '\r\n'.join(map(format_departure, departures))
+                    display.write(display_cmds)
+                    for departure in departures:
+                        departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
+                    time.sleep(0.5)
         except:
-            pass
-        if display_cmds:
-            display.write(display_cmds)
-        else:
             display.reset()
             display.write("Keine Daten od. Feh-\r\nler. Lauf heim.")
-        time.sleep(BUS_REFRESH_TIMEOUT)
+            time.sleep(BUS_REFRESH_TIMEOUT)
 
 def main():
     while True:
