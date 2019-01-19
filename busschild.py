@@ -13,54 +13,61 @@ import sys
 import time
 import traceback
 
-BASE_URL = "https://www.invg.de"
-SEARCH_URL = "https://www.invg.de/rt/showRealtimeCombined.action"
+RT_URLS = [
+        "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39099&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly",
+        "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39002&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly",
+        "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39001&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly"
+        ]
 BUS_REFRESH_TIMEOUT = 20
 STOP = "Klinikum"
-
+DISPLAY_WIDTH = 20
 __SCROLL_SEP = "\xDB"
 
-def get_realtime_info(stop_name):
-    """
-    Return the real time info for the first search hit for *stop_name* as a dict.
-    """
-    resp = requests.post(SEARCH_URL, {"nameKey": stop_name})
-    soup = BeautifulSoup(resp.text, "lxml")
-    table = soup.select("table.table-bs")[0]
-    tbody = table.tbody
-    first_hit = BASE_URL + tbody.tr.td.a["href"]
-    first_hit = first_hit.replace("showMultiple", "getRealtimeData")
-    stop_resp = requests.get(first_hit)
-    return json.loads(stop_resp.text)
+class Bus:
+    def __init__(self, date, time, route, destination):
+        self.datetime = datetime.strptime(date + " " + time, "%d.%m.%y %H:%M")
+        self.route = route
+        self.destination = destination
 
-def format_departure(departure):
-    route = departure['route'].replace(' ','')
-    destination = departure['destination']
-    strtime = departure['strTime'].replace(' ','')
-    if strtime == "0":
-        strtime = "RENN!"
-    line = "{} {} {} ".format(route, strtime, destination)
-    if len(line) >= 20:
-        line = line[:20]
-    else:
-        line = line.ljust(20, ' ')
-    return line
+    def __str__(self):
+        return "{:%H}:{:%M} {} {}".format(self.datetime, self.datetime, self.route, self.destination)
+
+    def __repr__(self):
+        return str(self)
+
+    def __lt__(self, other):
+        return self.datetime < other.datetime
+
+def get_realtime_info():
+    """
+    Fetch realtime information from RT_URLS.
+    """
+    buses = []
+    for url in RT_URLS:
+        json = requests.get(url).json()
+        for j in json['journey']:
+            buses.append(Bus(j['da'], j['ti'], j['pr'].split()[1], j['st']))
+    buses.sort()
+    return buses
 
 def do_departures(display):
     display.reset()
     while True:
         try:
-            departures = get_realtime_info(STOP)['departures']
-            departures = departures[:4]
+            buses = get_realtime_info()[:4]
             before = datetime.now()
-            for departure in departures:
-                departure['destination'] = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", departure['destination']))
+            for bus in buses:
+                if(len(str(bus)) >= DISPLAY_WIDTH):
+                    bus.destination = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", bus.destination))
+                else:
+                    bus.destination = bus.destination.ljust(DISPLAY_WIDTH - len(str(bus)))
             while (datetime.now() - before).seconds < BUS_REFRESH_TIMEOUT:
                     display.position_cursor(0,0)
-                    display_cmds = '\r\n'.join(map(format_departure, departures))
+                    display_cmds = '\r\n'.join(map(lambda b: str(b)[:20], buses))
                     display.write(display_cmds)
-                    for departure in departures:
-                        departure['destination'] = departure['destination'][1:]+departure['destination'][:1]
+                    for bus in buses:
+                        if(len(str(bus)) >= DISPLAY_WIDTH):
+                            bus.destination = bus.destination[1:]+bus.destination[:1]
                     time.sleep(0.5)
         except:
             display.reset()
