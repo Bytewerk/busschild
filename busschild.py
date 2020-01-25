@@ -2,22 +2,33 @@
 Show bus departures times on a POS display.
 """
 
-from bs4 import BeautifulSoup
-from datetime import datetime
-import ba66
-import json
 import re
-import requests
 import socket
 import sys
 import time
 import traceback
+from datetime import datetime
 
-RT_URLS = [
-    "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39099&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly",
-    "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39002&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly",
-    "https://fpa.invg.de/bin/stboard.exe/dny?L=vs_liveticker&tpl=liveticker2json&&input=39001&boardType=dep&productsFilter=1111111111&additionalTime=0&disableEquivs=yes&ignoreMasts=yes&maxJourneys=5&start=yes&selectDate=today&monitor=1&outputMode=tickerDataOnly"
-]
+import requests
+
+import ba66
+
+_RT_URL_FMT = "https://fpa.invg.de/bin/stboard.exe/dny"\
+              "?L=vs_liveticker"\
+              "&tpl=liveticker2json"\
+              "&input={}"\
+              "&boardType=dep" \
+              "&productsFilter=1111111111" \
+              "&additionalTime=0" \
+              "&disableEquivs=yes" \
+              "&ignoreMasts=yes" \
+              "&maxJourneys=5" \
+              "&start=yes" \
+              "&selectDate=today" \
+              "&monitor=1" \
+              "&outputMode=tickerDataOnly"
+
+RT_URLS = [_RT_URL_FMT.format(i) for i in [39099, 39002, 39001]]
 BUS_REFRESH_TIMEOUT = 20
 STOP = "Klinikum"
 DISPLAY_WIDTH = 20
@@ -46,8 +57,8 @@ def get_realtime_info():
     """
     buses = []
     for url in RT_URLS:
-        json = requests.get(url).json()
-        for j in json['journey']:
+        rt_data = requests.get(url).json()
+        for j in rt_data['journey']:
             buses.append(Bus(j['da'], j['ti'], j['pr'].split()[1], j['st']))
     buses.sort()
     return buses
@@ -60,7 +71,7 @@ def do_departures(display):
             buses = get_realtime_info()[:4]
             before = datetime.now()
             for bus in buses:
-                if (len(str(bus)) >= DISPLAY_WIDTH):
+                if len(str(bus)) >= DISPLAY_WIDTH:
                     bus.destination = "{} {} ".format(__SCROLL_SEP, re.sub(r"\s+", " ", bus.destination))
                 else:
                     bus.destination = bus.destination.ljust(DISPLAY_WIDTH - len(str(bus)))
@@ -69,7 +80,7 @@ def do_departures(display):
                 display_cmds = '\r\n'.join(map(lambda b: str(b)[:20], buses))
                 display.write(display_cmds)
                 for bus in buses:
-                    if (len(str(bus)) >= DISPLAY_WIDTH):
+                    if len(str(bus)) >= DISPLAY_WIDTH:
                         bus.destination = bus.destination[1:] + bus.destination[:1]
                 time.sleep(0.5)
         except:
