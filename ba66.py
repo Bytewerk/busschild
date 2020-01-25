@@ -26,7 +26,7 @@ class posdisplay():
     def write(self, data):
         if self.sock:
             if isinstance(data, str):
-                self.sock.send(bytes(data,'cp850'))
+                self.sock.send(bytes(data,'latin-1'))
             else:
                 self.sock.send(data)
         else:
